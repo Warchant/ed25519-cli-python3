@@ -1,1 +1,5 @@
-# ed25519-cli-python3
+# Install
+
+```
+pip install git+https://github.com/Warchant/pyed25519-sha3
+```
