@@ -124,3 +124,15 @@ def checkvalid(s, m, pk):
 
 def derive_pubkey_from_priv(priv):
     return publickey(priv)
+
+
+def sign(msg, priv, pub):
+    return signature(msg, priv, pub)
+
+
+def verify(msg, sig, pub):
+    try:
+        checkvalid(sig, msg, pub)
+        return True
+    except Exception as e:
+        return False
