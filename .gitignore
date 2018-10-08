@@ -102,3 +102,9 @@ venv.bak/
 
 # mypy
 .mypy_cache/
+
+.tox/
+.pytest_cache/
+pyed25519_sha3.egg-info/
+.eggs/
+.mypy_cache

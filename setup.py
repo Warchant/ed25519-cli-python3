@@ -2,8 +2,9 @@ from setuptools import setup
 
 setup(
     name='pyed25519-sha3',
-    version='0.0.1',
+    version='1.0.0',
     packages=[''],
+    install_requires=['pysha3'],
     url='https://github.com/Warchant/pyed25519-sha3',
     license='Apache 2.0',
     author='warchant',

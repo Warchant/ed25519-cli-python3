@@ -1,5 +1,10 @@
+from builtins import chr
+from past.utils import old_div
 from sha3 import sha3_512 as SHA3512
 
+import sys
+
+python_version = sys.version_info.major
 b = 256
 q = 2 ** 255 - 19
 l = 2 ** 252 + 27742317777372353535851937790883648493
@@ -11,7 +16,7 @@ def H(m):
 
 def expmod(b, e, m):
     if e == 0: return 1
-    t = expmod(b, e / 2, m) ** 2 % m
+    t = expmod(b, old_div(e, 2), m) ** 2 % m
     if e & 1: t = (t * b) % m
     return t
 
@@ -21,12 +26,12 @@ def inv(x):
 
 
 d = -121665 * inv(121666)
-I = expmod(2, (q - 1) / 4, q)
+I = expmod(2, old_div((q - 1), 4), q)
 
 
 def xrecover(y):
     xx = (y * y - 1) * inv(d * y * y + 1)
-    x = expmod(xx, (q + 3) / 8, q)
+    x = expmod(xx, old_div((q + 3), 8), q)
     if (x * x - xx) % q != 0: x = (x * I) % q
     if x % 2 != 0: x = q - x
     return x
@@ -49,7 +54,7 @@ def edwards(P, Q):
 
 def scalarmult(P, e):
     if e == 0: return [0, 1]
-    Q = scalarmult(P, e / 2)
+    Q = scalarmult(P, old_div(e, 2))
     Q = edwards(Q, Q)
     if e & 1: Q = edwards(Q, P)
     return Q
@@ -57,36 +62,40 @@ def scalarmult(P, e):
 
 def encodeint(y):
     bits = [(y >> i) & 1 for i in range(b)]
-    return ''.join([chr(sum([bits[i * 8 + j] << j for j in range(8)])) for i in range(b / 8)])
+    return ''.join([chr(sum([bits[i * 8 + j] << j for j in range(8)])) for i in range(old_div(b, 8))])
 
 
 def encodepoint(P):
     x = P[0]
     y = P[1]
     bits = [(y >> i) & 1 for i in range(b - 1)] + [x & 1]
-    return ''.join([chr(sum([bits[i * 8 + j] << j for j in range(8)])) for i in range(b / 8)])
+    return ''.join([chr(sum([bits[i * 8 + j] << j for j in range(8)])) for i in range(old_div(b, 8))])
 
 
-def bit(h, i):
-    return (ord(h[i / 8]) >> (i % 8)) & 1
+if python_version == 3:
+    def bit(h, i):
+        return ((h[old_div(i, 8)]) >> (i % 8)) & 1
+else:
+    def bit(h, i):
+        return (ord(h[old_div(i, 8)]) >> (i % 8)) & 1
 
 
 def publickey(sk):
     h = H(sk)
-    a = 2 ** (b - 2) + sum(2 ** i * bit(h, i) for i in range(3, b - 2))
+    a = 2 ** (b - 2) + sum(2 ** i * bit(h, i) for i in list(range(3, b - 2)))
     A = scalarmult(B, a)
     return encodepoint(A)
 
 
 def Hint(m):
     h = H(m)
-    return sum(2 ** i * bit(h, i) for i in range(2 * b))
+    return sum(2 ** i * bit(h, i) for i in list(range(2 * b)))
 
 
 def signature(m, sk, pk):
     h = H(sk)
-    a = 2 ** (b - 2) + sum(2 ** i * bit(h, i) for i in range(3, b - 2))
-    r = Hint(''.join([h[i] for i in range(b / 8, b / 4)]) + m)
+    a = 2 ** (b - 2) + sum(2 ** i * bit(h, i) for i in list(range(3, b - 2)))
+    r = Hint(''.join([h[i] for i in range(old_div(b, 8), old_div(b, 4))]) + m)
     R = scalarmult(B, r)
     S = (r + Hint(encodepoint(R) + pk + m) * a) % l
     return encodepoint(R) + encodeint(S)
@@ -99,11 +108,11 @@ def isoncurve(P):
 
 
 def decodeint(s):
-    return sum(2 ** i * bit(s, i) for i in range(0, b))
+    return sum(2 ** i * bit(s, i) for i in list(range(0, b)))
 
 
 def decodepoint(s):
-    y = sum(2 ** i * bit(s, i) for i in range(0, b - 1))
+    y = sum(2 ** i * bit(s, i) for i in list(range(0, b - 1)))
     x = xrecover(y)
     if x & 1 != bit(s, b - 1): x = q - x
     P = [x, y]
@@ -112,11 +121,11 @@ def decodepoint(s):
 
 
 def checkvalid(s, m, pk):
-    if len(s) != b / 4: raise Exception("signature length is wrong")
-    if len(pk) != b / 8: raise Exception("public-key length is wrong")
-    R = decodepoint(s[0:b / 8])
+    if len(s) != old_div(b, 4): raise Exception("signature length is wrong")
+    if len(pk) != old_div(b, 8): raise Exception("public-key length is wrong")
+    R = decodepoint(s[0:old_div(b, 8)])
     A = decodepoint(pk)
-    S = decodeint(s[b / 8:b / 4])
+    S = decodeint(s[old_div(b, 8):old_div(b, 4)])
     h = Hint(encodepoint(R) + pk + m)
     if scalarmult(B, S) != edwards(R, scalarmult(A, h)):
         raise Exception("signature does not pass verification")
@@ -134,5 +143,5 @@ def verify(msg, sig, pub):
     try:
         checkvalid(sig, msg, pub)
         return True
-    except Exception as e:
+    except Exception:
         return False
